@@ -1,3 +1,4 @@
+mod scanner;
 mod token;
 
 use std::{
@@ -6,6 +7,8 @@ use std::{
     io::{Write, stdin, stdout},
     process::exit,
 };
+
+use scanner::Scanner;
 
 fn run_file(path: String) {
     let contents = read_to_string(path).expect("Error while reading input file...");
@@ -31,7 +34,9 @@ fn run_prompt() {
 }
 
 fn run(src: String) {
-    println!("{}", src);
+    let mut scanner = Scanner::new(src);
+    scanner.scan_tokens();
+    println!("{:#?}", scanner.tokens);
 }
 
 fn main() {
