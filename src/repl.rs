@@ -1,4 +1,4 @@
-use std::io::{Write, stdin, stdout};
+use rustyline::DefaultEditor;
 
 use crate::scanner::Scanner;
 
@@ -13,39 +13,43 @@ impl Repl {
 
     pub fn run_repl(&mut self) {
         let mut buf = String::new();
-        let mut line_buf = String::new();
+        let mut rl = DefaultEditor::new().unwrap();
 
         loop {
-            line_buf.clear();
             let indent = "    ".repeat(self.indent_count);
             let leading = if self.indent_count == 0 { ">>>" } else { "..." };
+            let prompt = format!("{} {}", leading, indent);
 
-            print!("{} {}", leading, indent);
+            let readline = rl.readline(&prompt);
 
-            stdout().flush().expect("Failed to flush stdout");
-            stdin()
-                .read_line(&mut line_buf)
-                .expect("Failed to read line");
+            match readline {
+                Ok(line) => {
+                    rl.add_history_entry(&line).unwrap();
 
-            if matches!(line_buf.as_str().trim(), "exit" | "exit()") {
-                break;
-            }
+                    if matches!(line.trim(), "exit" | "exit()") {
+                        break;
+                    }
 
-            if line_buf.trim().is_empty() {
-                self.indent_count -= 1;
-                continue;
-            }
+                    if line.trim().is_empty() {
+                        self.indent_count = self.indent_count.saturating_sub(1);
+                        continue;
+                    }
 
-            let line = &format!("{}{}", indent, line_buf);
+                    let indented = &format!("{}{}", indent, line);
+                    buf.push_str(indented);
 
-            buf.push_str(line);
+                    if line.trim().ends_with(':') {
+                        self.indent_count += 1;
+                    }
 
-            if line_buf.trim().ends_with(':') {
-                self.indent_count += 1;
-            }
-
-            if line_buf.trim().starts_with("return") {
-                self.indent_count = 0;
+                    if line.trim().starts_with("return") {
+                        self.indent_count = 0;
+                    }
+                }
+                Err(err) => {
+                    eprintln!("{:?}", err);
+                    break;
+                }
             }
         }
 
