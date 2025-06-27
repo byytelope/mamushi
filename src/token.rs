@@ -90,7 +90,6 @@ pub enum TokenType {
     Pass,
     Import,
     From,
-    As,
     Print,
     Global,
     Del,
@@ -99,9 +98,6 @@ pub enum TokenType {
     Raise,
     Is,
     Lambda,
-    None,
-    True,
-    False,
 
     // Indentation
     Indent,
@@ -174,7 +170,6 @@ impl std::fmt::Display for TokenType {
             TokenType::Pass => "pass",
             TokenType::Import => "import",
             TokenType::From => "from",
-            TokenType::As => "as",
             TokenType::Print => "print",
             TokenType::Global => "global",
             TokenType::Del => "del",
@@ -183,9 +178,6 @@ impl std::fmt::Display for TokenType {
             TokenType::Raise => "raise",
             TokenType::Is => "is",
             TokenType::Lambda => "lambda",
-            TokenType::None => "None",
-            TokenType::True => "True",
-            TokenType::False => "False",
 
             // Indentation
             TokenType::Indent => "<indent>",
@@ -222,7 +214,6 @@ static KEYWORDS: LazyLock<HashMap<&'static str, TokenType>> = LazyLock::new(|| {
         ("pass", TokenType::Pass),
         ("import", TokenType::Import),
         ("from", TokenType::From),
-        ("as", TokenType::As),
         ("print", TokenType::Print),
         ("global", TokenType::Global),
         ("del", TokenType::Del),
@@ -231,9 +222,6 @@ static KEYWORDS: LazyLock<HashMap<&'static str, TokenType>> = LazyLock::new(|| {
         ("raise", TokenType::Raise),
         ("is", TokenType::Is),
         ("lambda", TokenType::Lambda),
-        ("none", TokenType::None),
-        ("true", TokenType::True),
-        ("false", TokenType::False),
     ]
     .iter()
     .cloned()

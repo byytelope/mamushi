@@ -25,7 +25,11 @@ impl<'scanner> Scanner<'scanner> {
             self.scan_token();
         }
 
-        self.add_token(TokenType::Eof, None);
+        self.tokens.push(Token::new(
+            TokenType::Eof,
+            None,
+            (self.current, self.current),
+        ));
     }
 
     fn at_end(&self) -> bool {
