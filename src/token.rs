@@ -1,17 +1,6 @@
 use std::{collections::HashMap, sync::LazyLock};
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct Span {
-    pub start: usize,
-    pub end: usize,
-    pub line: usize,
-}
-
-impl Span {
-    pub fn new(start: usize, end: usize, line: usize) -> Self {
-        Self { start, end, line }
-    }
-}
+pub type Span = (usize, usize);
 
 #[derive(Debug, PartialEq)]
 pub struct Token {
@@ -73,9 +62,9 @@ pub enum TokenType {
     Backslash, // \
 
     // Special
-    Hash,        // #
+    // Hash,        // #
     SingleQuote, // '
-    DoubleQuote, // "
+    // DoubleQuote, // "
 
     // Literals
     Identifier,
@@ -157,9 +146,9 @@ impl std::fmt::Display for TokenType {
             TokenType::Backslash => "\\",
 
             // Special
-            TokenType::Hash => "#",
+            // TokenType::Hash => "#",
             TokenType::SingleQuote => "'",
-            TokenType::DoubleQuote => "\"",
+            // TokenType::DoubleQuote => "\"",
 
             // Literals
             TokenType::Identifier => "identifier",

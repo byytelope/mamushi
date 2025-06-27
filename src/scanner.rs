@@ -1,21 +1,19 @@
-use crate::token::{LiteralValue, Span, Token, TokenType};
+use crate::token::{LiteralValue, Token, TokenType};
 
-pub struct Scanner {
-    src: String,
+pub struct Scanner<'scanner> {
+    src: &'scanner String,
     start: usize,
     current: usize,
-    line: usize,
     indent_stack: Vec<usize>,
     pub tokens: Vec<Token>,
 }
 
-impl Scanner {
-    pub fn new(src: String) -> Self {
+impl<'scanner> Scanner<'scanner> {
+    pub fn new(src: &'scanner String) -> Self {
         Self {
             src,
             start: 0,
             current: 0,
-            line: 1,
             indent_stack: vec![0],
             tokens: vec![],
         }
@@ -101,7 +99,6 @@ impl Scanner {
             '"' => self.handle_string(),
             '\n' => {
                 self.add_token(TokenType::Newline, None);
-                self.line += 1;
                 self.handle_indentation();
             }
             ' ' | '\t' | '\r' => {}
@@ -111,10 +108,7 @@ impl Scanner {
                 } else if ch.is_ascii_alphabetic() {
                     self.handle_identifier();
                 } else {
-                    eprintln!(
-                        "Unexpected character on line {}:{} -> {:#?}",
-                        self.line, self.start, ch
-                    );
+                    eprintln!("Unexpected character at {} -> {:#?}", self.start, ch);
                 }
             }
         }
@@ -189,7 +183,7 @@ impl Scanner {
                     }
                 }
                 if *self.indent_stack.last().unwrap() != indent {
-                    panic!("Inconsistent indentation at line {}", self.line);
+                    panic!("Inconsistent indentation at {}", self.start);
                 }
             }
             std::cmp::Ordering::Equal => {}
@@ -200,14 +194,11 @@ impl Scanner {
 
     fn handle_string(&mut self) {
         while !matches!(self.peek(), '"' | '\0') {
-            if self.peek() == '\n' {
-                self.line += 1;
-            }
             self.advance();
         }
 
         if self.at_end() {
-            eprintln!("Unterminated string on line {}", self.line);
+            eprintln!("Unterminated string at {}", self.start);
             return;
         }
 
@@ -278,11 +269,8 @@ impl Scanner {
     }
 
     fn add_token(&mut self, token_type: TokenType, literal: Option<LiteralValue>) {
-        self.tokens.push(Token::new(
-            token_type,
-            literal,
-            Span::new(self.start, self.current, self.line),
-        ));
+        self.tokens
+            .push(Token::new(token_type, literal, (self.start, self.current)));
     }
 
     fn peek(&self) -> char {
@@ -316,7 +304,7 @@ mod tests {
     #[test]
     fn test_def_with_indentation() {
         let src = "def bruh():\n    print(\"Bruh\")".to_string();
-        let mut scanner = Scanner::new(src);
+        let mut scanner = Scanner::new(&src);
         scanner.scan_tokens();
 
         println!("Actual tokens:");
@@ -328,27 +316,27 @@ mod tests {
             Token::new(
                 TokenType::Def,
                 Some(LiteralValue::Identifier("def".to_string())),
-                Span::new(0, 3, 1),
+                (0, 3),
             ),
             Token::new(
                 TokenType::Identifier,
                 Some(LiteralValue::Identifier("bruh".to_string())),
-                Span::new(4, 8, 1),
+                (4, 8),
             ),
-            Token::new(TokenType::LParen, None, Span::new(8, 9, 1)),
-            Token::new(TokenType::RParen, None, Span::new(9, 10, 1)),
-            Token::new(TokenType::Colon, None, Span::new(10, 11, 1)),
-            Token::new(TokenType::Newline, None, Span::new(11, 12, 1)),
-            Token::new(TokenType::Indent, None, Span::new(12, 16, 2)),
-            Token::new(TokenType::Print, None, Span::new(16, 21, 2)),
-            Token::new(TokenType::LParen, None, Span::new(21, 22, 2)),
+            Token::new(TokenType::LParen, None, (8, 9)),
+            Token::new(TokenType::RParen, None, (9, 10)),
+            Token::new(TokenType::Colon, None, (10, 11)),
+            Token::new(TokenType::Newline, None, (11, 12)),
+            Token::new(TokenType::Indent, None, (12, 16)),
+            Token::new(TokenType::Print, None, (16, 21)),
+            Token::new(TokenType::LParen, None, (21, 22)),
             Token::new(
                 TokenType::String,
                 Some(LiteralValue::String("Bruh".to_string())),
-                Span::new(22, 28, 2),
+                (22, 28),
             ),
-            Token::new(TokenType::RParen, None, Span::new(28, 29, 2)),
-            Token::new(TokenType::Eof, None, Span::new(29, 29, 2)),
+            Token::new(TokenType::RParen, None, (28, 29)),
+            Token::new(TokenType::Eof, None, (29, 29)),
         ];
 
         assert_eq!(scanner.tokens.len(), expected.len(), "Token count mismatch");
@@ -357,11 +345,6 @@ mod tests {
             assert_eq!(
                 actual.token_type, expected.token_type,
                 "Token type mismatch at index {}",
-                i
-            );
-            assert_eq!(
-                actual.span.line, expected.span.line,
-                "Line number mismatch at index {}",
                 i
             );
         }

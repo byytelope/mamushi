@@ -1,42 +1,14 @@
+mod repl;
 mod scanner;
 mod token;
 
-use std::{
-    env::args,
-    fs::read_to_string,
-    io::{Write, stdin, stdout},
-    process::exit,
-};
+use std::{env::args, fs::read_to_string, process::exit};
 
-use scanner::Scanner;
+use repl::Repl;
 
 fn run_file(path: String) {
     let contents = read_to_string(path).expect("Error while reading input file...");
-    run(contents);
-}
-
-fn run_prompt() {
-    let mut buf = String::new();
-
-    loop {
-        buf.clear();
-        print!("> ");
-        stdout().flush().expect("Failed to flush stdout...");
-        stdin().read_line(&mut buf).expect("Failed to read line...");
-
-        if matches!(buf.as_str().trim(), "exit") {
-            println!("Goodbye!");
-            exit(0);
-        } else {
-            run(buf.to_string());
-        }
-    }
-}
-
-fn run(src: String) {
-    let mut scanner = Scanner::new(src);
-    scanner.scan_tokens();
-    println!("{:#?}", scanner.tokens);
+    println!("{}", contents);
 }
 
 fn main() {
@@ -52,7 +24,11 @@ fn main() {
                 .expect("Error while reading args...")
                 .to_string(),
         ),
-        0 => run_prompt(),
+        0 => {
+            let mut repl = Repl::new();
+            repl.run_repl();
+            exit(0);
+        }
     }
 
     println!("{:#?}", args);
