@@ -1,15 +1,15 @@
 use crate::token::{LiteralValue, Token, TokenType};
 
-pub struct Scanner<'scanner> {
-    src: &'scanner String,
+pub struct Lexer<'lexer> {
+    src: &'lexer String,
     start: usize,
     current: usize,
     indent_stack: Vec<usize>,
     pub tokens: Vec<Token>,
 }
 
-impl<'scanner> Scanner<'scanner> {
-    pub fn new(src: &'scanner String) -> Self {
+impl<'lexer> Lexer<'lexer> {
+    pub fn new(src: &'lexer String) -> Self {
         Self {
             src,
             start: 0,
@@ -19,10 +19,10 @@ impl<'scanner> Scanner<'scanner> {
         }
     }
 
-    pub fn scan_tokens(&mut self) {
+    pub fn analyze(&mut self) {
         while !self.at_end() {
             self.start = self.current;
-            self.scan_token();
+            self.lex();
         }
 
         self.tokens.push(Token::new(
@@ -36,7 +36,7 @@ impl<'scanner> Scanner<'scanner> {
         self.current >= self.src.len()
     }
 
-    fn scan_token(&mut self) {
+    fn lex(&mut self) {
         let ch = self.advance();
 
         match ch {
@@ -99,8 +99,7 @@ impl<'scanner> Scanner<'scanner> {
                     self.advance();
                 }
             }
-            '\'' => self.add_token(TokenType::SingleQuote, None),
-            '"' => self.handle_string(),
+            '"' | '\'' => self.handle_string(ch),
             '\n' => {
                 self.add_token(TokenType::Newline, None);
                 self.handle_indentation();
@@ -196,24 +195,40 @@ impl<'scanner> Scanner<'scanner> {
         self.start = self.current;
     }
 
-    fn handle_string(&mut self) {
-        while !matches!(self.peek(), '"' | '\0') {
-            self.advance();
+    fn handle_string(&mut self, str_char: char) {
+        let mut value = String::new();
+
+        while self.peek() != str_char && !self.at_end() {
+            let ch = self.advance();
+
+            if ch == '\\' {
+                let escaped = match self.advance() {
+                    'n' => '\n',
+                    't' => '\t',
+                    'r' => '\r',
+                    '\\' => '\\',
+                    q if q == str_char => str_char,
+                    other => {
+                        eprintln!("Unknown escape sequence: \\{other}");
+                        other
+                    }
+                };
+                value.push(escaped);
+            } else {
+                if ch == '\n' {
+                    eprintln!("Unterminated string at line {}", self.start);
+                    return;
+                }
+                value.push(ch);
+            }
         }
 
-        if self.at_end() {
+        if self.at_end() || self.peek() != str_char {
             eprintln!("Unterminated string at {}", self.start);
             return;
         }
 
         self.advance();
-
-        let value = self
-            .src
-            .get(self.start + 1..self.current - 1)
-            .unwrap_or_default()
-            .to_string();
-
         self.add_token(TokenType::String, Some(LiteralValue::String(value)));
     }
 
@@ -308,12 +323,12 @@ mod tests {
     #[test]
     fn test_def_with_indentation() {
         let src = "def bruh():\n    print(\"Bruh\")".to_string();
-        let mut scanner = Scanner::new(&src);
-        scanner.scan_tokens();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
 
         println!("Actual tokens:");
-        for token in &scanner.tokens {
-            println!("{:#?}", token);
+        for token in &lexer.tokens {
+            println!("{token:#?}");
         }
 
         let expected = vec![
@@ -343,13 +358,12 @@ mod tests {
             Token::new(TokenType::Eof, None, (29, 29)),
         ];
 
-        assert_eq!(scanner.tokens.len(), expected.len(), "Token count mismatch");
+        assert_eq!(lexer.tokens.len(), expected.len(), "Token count mismatch");
 
-        for (i, (actual, expected)) in scanner.tokens.iter().zip(expected.iter()).enumerate() {
+        for (i, (actual, expected)) in lexer.tokens.iter().zip(expected.iter()).enumerate() {
             assert_eq!(
                 actual.token_type, expected.token_type,
-                "Token type mismatch at index {}",
-                i
+                "Token type mismatch at index {i}"
             );
         }
     }

@@ -1,5 +1,6 @@
+mod ast;
+mod lexer;
 mod repl;
-mod scanner;
 mod token;
 
 use std::{env::args, fs::read_to_string, process::exit};
@@ -8,7 +9,7 @@ use repl::Repl;
 
 fn run_file(path: String) {
     let contents = read_to_string(path).expect("Error while reading input file...");
-    println!("{}", contents);
+    println!("{contents}");
 }
 
 fn main() {
@@ -31,5 +32,5 @@ fn main() {
         }
     }
 
-    println!("{:#?}", args);
+    println!("{args:#?}");
 }

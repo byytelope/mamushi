@@ -61,11 +61,6 @@ pub enum TokenType {
     Semicolon, // ;
     Backslash, // \
 
-    // Special
-    // Hash,        // #
-    SingleQuote, // '
-    // DoubleQuote, // "
-
     // Literals
     Identifier,
     String,
@@ -140,11 +135,6 @@ impl std::fmt::Display for TokenType {
             TokenType::Dot => ".",
             TokenType::Semicolon => ";",
             TokenType::Backslash => "\\",
-
-            // Special
-            // TokenType::Hash => "#",
-            TokenType::SingleQuote => "'",
-            // TokenType::DoubleQuote => "\"",
 
             // Literals
             TokenType::Identifier => "identifier",
