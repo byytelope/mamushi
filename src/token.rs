@@ -19,7 +19,7 @@ impl Token {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum LiteralValue {
     Identifier(String),
     String(String),

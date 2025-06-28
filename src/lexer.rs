@@ -101,14 +101,18 @@ impl<'lexer> Lexer<'lexer> {
             }
             '"' | '\'' => self.handle_string(ch),
             '\n' => {
-                self.add_token(TokenType::Newline, None);
+                self.tokens.push(Token::new(
+                    TokenType::Newline,
+                    None,
+                    (self.start, self.start),
+                ));
                 self.handle_indentation();
             }
             ' ' | '\t' | '\r' => {}
             _ => {
                 if ch.is_ascii_digit() {
                     self.handle_number();
-                } else if ch.is_ascii_alphabetic() {
+                } else if ch.is_ascii_alphabetic() || ch == '_' {
                     self.handle_identifier();
                 } else {
                     eprintln!("Unexpected character at {} -> {:#?}", self.start, ch);
@@ -233,7 +237,7 @@ impl<'lexer> Lexer<'lexer> {
     }
 
     fn handle_identifier(&mut self) {
-        while self.peek().is_ascii_alphanumeric() {
+        while self.peek().is_ascii_alphanumeric() || self.peek() == '_' {
             self.advance();
         }
 
@@ -321,50 +325,331 @@ mod tests {
     use crate::token::*;
 
     #[test]
-    fn test_def_with_indentation() {
-        let src = "def bruh():\n    print(\"Bruh\")".to_string();
+    fn test_function_definition() {
+        let src = "def yo(name):\n    print(\"Yo\", name)".to_string();
         let mut lexer = Lexer::new(&src);
         lexer.analyze();
 
-        println!("Actual tokens:");
-        for token in &lexer.tokens {
-            println!("{token:#?}");
-        }
-
-        let expected = vec![
-            Token::new(
-                TokenType::Def,
-                Some(LiteralValue::Identifier("def".to_string())),
-                (0, 3),
-            ),
-            Token::new(
-                TokenType::Identifier,
-                Some(LiteralValue::Identifier("bruh".to_string())),
-                (4, 8),
-            ),
-            Token::new(TokenType::LParen, None, (8, 9)),
-            Token::new(TokenType::RParen, None, (9, 10)),
-            Token::new(TokenType::Colon, None, (10, 11)),
-            Token::new(TokenType::Newline, None, (11, 12)),
-            Token::new(TokenType::Indent, None, (12, 16)),
-            Token::new(TokenType::Print, None, (16, 21)),
-            Token::new(TokenType::LParen, None, (21, 22)),
-            Token::new(
-                TokenType::String,
-                Some(LiteralValue::String("Bruh".to_string())),
-                (22, 28),
-            ),
-            Token::new(TokenType::RParen, None, (28, 29)),
-            Token::new(TokenType::Eof, None, (29, 29)),
+        let expected_types = [
+            TokenType::Def,
+            TokenType::Identifier,
+            TokenType::LParen,
+            TokenType::Identifier,
+            TokenType::RParen,
+            TokenType::Colon,
+            TokenType::Newline,
+            TokenType::Indent,
+            TokenType::Print,
+            TokenType::LParen,
+            TokenType::String,
+            TokenType::Comma,
+            TokenType::Identifier,
+            TokenType::RParen,
+            TokenType::Eof,
         ];
 
-        assert_eq!(lexer.tokens.len(), expected.len(), "Token count mismatch");
+        assert_eq!(
+            lexer.tokens.len(),
+            expected_types.len(),
+            "Token count mismatch"
+        );
 
-        for (i, (actual, expected)) in lexer.tokens.iter().zip(expected.iter()).enumerate() {
+        for (i, expected_type) in expected_types.iter().enumerate() {
             assert_eq!(
-                actual.token_type, expected.token_type,
-                "Token type mismatch at index {i}"
+                lexer.tokens[i].token_type, *expected_type,
+                "Token type mismatch at index {i}: expected {:?}, got {:?}",
+                expected_type, lexer.tokens[i].token_type
             );
         }
+
+        assert_eq!(
+            lexer.tokens[1].literal,
+            Some(LiteralValue::Identifier("yo".to_string()))
+        );
+        assert_eq!(
+            lexer.tokens[3].literal,
+            Some(LiteralValue::Identifier("name".to_string()))
+        );
+        assert_eq!(
+            lexer.tokens[10].literal,
+            Some(LiteralValue::String("Yo".to_string()))
+        );
+        assert_eq!(
+            lexer.tokens[12].literal,
+            Some(LiteralValue::Identifier("name".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_operators() {
+        let src = "+ - * / % ** < > = == != <= >= & | ^ ~".to_string();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
+
+        let expected_types = [
+            TokenType::Plus,
+            TokenType::Minus,
+            TokenType::Star,
+            TokenType::Slash,
+            TokenType::Modulo,
+            TokenType::StarStar,
+            TokenType::Less,
+            TokenType::Greater,
+            TokenType::Equal,
+            TokenType::EqualEqual,
+            TokenType::NotEqual,
+            TokenType::LessEqual,
+            TokenType::GreaterEqual,
+            TokenType::Ampersand,
+            TokenType::Pipe,
+            TokenType::Caret,
+            TokenType::Tilde,
+            TokenType::Eof,
+        ];
+
+        for (i, expected_type) in expected_types.iter().enumerate() {
+            assert_eq!(
+                lexer.tokens[i].token_type, *expected_type,
+                "Operator mismatch at index {i}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_delimiters() {
+        let src = "( ) [ ] { } , : . ; \\".to_string();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
+
+        let expected_types = [
+            TokenType::LParen,
+            TokenType::RParen,
+            TokenType::LBracket,
+            TokenType::RBracket,
+            TokenType::LBrace,
+            TokenType::RBrace,
+            TokenType::Comma,
+            TokenType::Colon,
+            TokenType::Dot,
+            TokenType::Semicolon,
+            TokenType::Backslash,
+            TokenType::Eof,
+        ];
+
+        for (i, expected_type) in expected_types.iter().enumerate() {
+            assert_eq!(
+                lexer.tokens[i].token_type, *expected_type,
+                "Delimiter mismatch at index {i}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_integers() {
+        let src = "69 0 420".to_string();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
+
+        assert_eq!(lexer.tokens[0].token_type, TokenType::Int);
+        assert_eq!(lexer.tokens[0].literal, Some(LiteralValue::Int(69)));
+
+        assert_eq!(lexer.tokens[1].token_type, TokenType::Int);
+        assert_eq!(lexer.tokens[1].literal, Some(LiteralValue::Int(0)));
+
+        assert_eq!(lexer.tokens[2].token_type, TokenType::Int);
+        assert_eq!(lexer.tokens[2].literal, Some(LiteralValue::Int(420)));
+    }
+
+    #[test]
+    fn test_floats() {
+        let src = "3.41 0.5 42.0".to_string();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
+
+        assert_eq!(lexer.tokens[0].token_type, TokenType::Float);
+        assert_eq!(lexer.tokens[0].literal, Some(LiteralValue::Float(3.41)));
+
+        assert_eq!(lexer.tokens[1].token_type, TokenType::Float);
+        assert_eq!(lexer.tokens[1].literal, Some(LiteralValue::Float(0.5)));
+
+        assert_eq!(lexer.tokens[2].token_type, TokenType::Float);
+        assert_eq!(lexer.tokens[2].literal, Some(LiteralValue::Float(42.0)));
+    }
+
+    #[test]
+    fn test_strings() {
+        let src = r#""yo" 'gurt' "gurt\nyo""#.to_string();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
+
+        assert_eq!(lexer.tokens[0].token_type, TokenType::String);
+        assert_eq!(
+            lexer.tokens[0].literal,
+            Some(LiteralValue::String("yo".to_string()))
+        );
+
+        assert_eq!(lexer.tokens[1].token_type, TokenType::String);
+        assert_eq!(
+            lexer.tokens[1].literal,
+            Some(LiteralValue::String("gurt".to_string()))
+        );
+
+        assert_eq!(lexer.tokens[2].token_type, TokenType::String);
+        assert_eq!(
+            lexer.tokens[2].literal,
+            Some(LiteralValue::String("gurt\nyo".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_keywords() {
+        let src =
+            "and or not if elif else while for in break continue return def class pass import from print global del try except raise is lambda".to_string();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
+
+        let expected_types = [
+            TokenType::And,
+            TokenType::Or,
+            TokenType::Not,
+            TokenType::If,
+            TokenType::Elif,
+            TokenType::Else,
+            TokenType::While,
+            TokenType::For,
+            TokenType::In,
+            TokenType::Break,
+            TokenType::Continue,
+            TokenType::Return,
+            TokenType::Def,
+            TokenType::Class,
+            TokenType::Pass,
+            TokenType::Import,
+            TokenType::From,
+            TokenType::Print,
+            TokenType::Global,
+            TokenType::Del,
+            TokenType::Try,
+            TokenType::Except,
+            TokenType::Raise,
+            TokenType::Is,
+            TokenType::Lambda,
+        ];
+
+        for (i, expected_type) in expected_types.iter().enumerate() {
+            assert_eq!(
+                lexer.tokens[i].token_type, *expected_type,
+                "Keyword mismatch at index {i}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_identifiers() {
+        let src = "variable_name func123 _private CamelCase".to_string();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
+
+        let expected_identifiers = ["variable_name", "func123", "_private", "CamelCase"];
+
+        for (i, expected_id) in expected_identifiers.iter().enumerate() {
+            assert_eq!(lexer.tokens[i].token_type, TokenType::Identifier);
+            assert_eq!(
+                lexer.tokens[i].literal,
+                Some(LiteralValue::Identifier(expected_id.to_string()))
+            );
+        }
+    }
+
+    #[test]
+    fn test_nested_indentation() {
+        let src = "if True:\n    if nested:\n        print(\"deep\")\n    print(\"back\")\nprint(\"root\")".to_string();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
+
+        let indent_tokens: Vec<_> = lexer
+            .tokens
+            .iter()
+            .filter(|t| matches!(t.token_type, TokenType::Indent | TokenType::Dedent))
+            .collect();
+
+        assert_eq!(indent_tokens.len(), 4); // 2 indents, 2 dedents
+        assert_eq!(indent_tokens[0].token_type, TokenType::Indent);
+        assert_eq!(indent_tokens[1].token_type, TokenType::Indent);
+        assert_eq!(indent_tokens[2].token_type, TokenType::Dedent);
+        assert_eq!(indent_tokens[3].token_type, TokenType::Dedent);
+    }
+
+    #[test]
+    fn test_comments() {
+        let src = "x = 5  # dababy yo\ny = 10".to_string();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
+
+        let non_newline_tokens: Vec<_> = lexer
+            .tokens
+            .iter()
+            .filter(|t| !matches!(t.token_type, TokenType::Newline))
+            .collect();
+
+        assert_eq!(non_newline_tokens.len(), 7); // x, =, 5, y, =, 10, eof
+        assert_eq!(non_newline_tokens[0].token_type, TokenType::Identifier);
+        assert_eq!(non_newline_tokens[1].token_type, TokenType::Equal);
+        assert_eq!(non_newline_tokens[2].token_type, TokenType::Int);
+    }
+
+    #[test]
+    fn test_empty_lines() {
+        let src = "x = 1\n\n\ny = 2".to_string();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
+
+        let newline_count = lexer
+            .tokens
+            .iter()
+            .filter(|t| matches!(t.token_type, TokenType::Newline))
+            .count();
+
+        assert_eq!(newline_count, 3);
+    }
+
+    #[test]
+    fn test_complex_expression() {
+        let src = "bruh = (a + b) * 2.5".to_string();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
+
+        let expected_types = [
+            TokenType::Identifier,
+            TokenType::Equal,
+            TokenType::LParen,
+            TokenType::Identifier,
+            TokenType::Plus,
+            TokenType::Identifier,
+            TokenType::RParen,
+            TokenType::Star,
+            TokenType::Float,
+            TokenType::Eof,
+        ];
+
+        for (i, expected_type) in expected_types.iter().enumerate() {
+            assert_eq!(
+                lexer.tokens[i].token_type, *expected_type,
+                "Complex expression mismatch at index {i}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_string_escapes() {
+        let src = r#""yo\ngurt\t\"\\\r""#.to_string();
+        let mut lexer = Lexer::new(&src);
+        lexer.analyze();
+
+        assert_eq!(lexer.tokens[0].token_type, TokenType::String);
+        assert_eq!(
+            lexer.tokens[0].literal,
+            Some(LiteralValue::String("yo\ngurt\t\"\\\r".to_string()))
+        );
     }
 }
