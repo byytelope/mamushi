@@ -1,4 +1,4 @@
-use crate::token::{LiteralValue, TokenType};
+use crate::core::token::{LiteralValue, TokenType};
 
 #[derive(Debug)]
 #[allow(dead_code)]

@@ -1,6 +1,6 @@
 use rustyline::DefaultEditor;
 
-use crate::{lexer::Lexer, parser::Parser};
+use crate::frontend::{lexer::Lexer, parser::Parser};
 
 pub struct Repl {
     indent_count: usize,
@@ -22,10 +22,8 @@ impl Repl {
         loop {
             self.indented = self.indent_count > 0;
             let indent = "    ".repeat(self.indent_count);
-            let leading = if !self.indented { ">>>" } else { "..." };
-            let prompt = format!("{leading} {indent}");
-
-            let readline = rl.readline(&prompt);
+            let prompt = if !self.indented { ">>> " } else { "... " };
+            let readline = rl.readline_with_initial(prompt, (&indent, ""));
 
             match readline {
                 Ok(line) => {
@@ -36,8 +34,8 @@ impl Repl {
                         continue;
                     }
 
-                    let indented = &format!("{indent}{line}\n");
-                    buf.push_str(indented);
+                    buf.push_str(&line);
+                    buf.push('\n');
 
                     if line.trim().ends_with(':') {
                         self.indent_count += 1;

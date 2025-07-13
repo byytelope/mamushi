@@ -1,17 +1,10 @@
-mod ast;
-mod lexer;
-mod parser;
-mod repl;
-mod token;
+mod cli;
+mod core;
+mod frontend;
 
-use std::{env::args, fs::read_to_string, process::exit};
+use std::{env::args, process::exit};
 
-use repl::Repl;
-
-fn run_file(path: String) {
-    let contents = read_to_string(path).expect("Error while reading input file...");
-    println!("{contents}");
-}
+use cli::{repl::Repl, runner::run_file};
 
 fn main() {
     let args = args().skip(1).collect::<Vec<String>>();
