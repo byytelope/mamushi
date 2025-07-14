@@ -3,28 +3,31 @@ use crate::core::{
     token::{LiteralValue, Token, TokenType},
 };
 
-pub struct Parser {
-    tokens: Vec<Token>,
+pub struct Parser<'prs> {
     current: usize,
+    pub statements: Vec<Stmt>,
+    tokens: &'prs Vec<Token>,
 }
 
-impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
-        Parser { tokens, current: 0 }
+impl<'prs> Parser<'prs> {
+    pub fn new(tokens: &'prs Vec<Token>) -> Self {
+        Parser {
+            current: 0,
+            statements: vec![],
+            tokens,
+        }
     }
 
-    pub fn parse(&mut self) -> Vec<Stmt> {
-        let mut statements = vec![];
+    pub fn parse(&mut self) {
+        self.statements.clear();
 
         while !self.is_at_end() {
             if let Some(stmt) = self.declaration() {
-                statements.push(stmt);
+                self.statements.push(stmt);
             } else {
                 self.advance();
             }
         }
-
-        statements
     }
 
     fn declaration(&mut self) -> Option<Stmt> {

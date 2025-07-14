@@ -1,9 +1,9 @@
-use std::fs::read_to_string;
+use std::{error::Error, fs::read_to_string};
 
 use crate::frontend::{lexer::Lexer, parser::Parser};
 
-pub fn run_file(path: String) {
-    let input = read_to_string(path).expect("Error while reading input file...");
+pub fn run_file(path: String) -> Result<(), Box<dyn Error>> {
+    let input = read_to_string(path)?;
 
     println!("{input}");
 
@@ -14,9 +14,12 @@ pub fn run_file(path: String) {
     println!("TOKENS -------------------------------");
     println!("{lex_tokens:#?}");
 
-    let mut parser = Parser::new(lex_tokens);
-    let stmts = parser.parse();
+    let mut parser = Parser::new(&lex_tokens);
+    parser.parse();
 
+    let stmts = parser.statements;
     println!("STATEMENTS -------------------------------");
     println!("{stmts:#?}");
+
+    Ok(())
 }

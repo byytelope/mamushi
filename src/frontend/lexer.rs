@@ -1,15 +1,15 @@
 use crate::core::token::{LiteralValue, Token, TokenType};
 
-pub struct Lexer<'lexer> {
-    src: &'lexer String,
+pub struct Lexer<'lx> {
+    src: &'lx String,
     start: usize,
     current: usize,
     indent_stack: Vec<usize>,
     pub tokens: Vec<Token>,
 }
 
-impl<'lexer> Lexer<'lexer> {
-    pub fn new(src: &'lexer String) -> Self {
+impl<'lx> Lexer<'lx> {
+    pub fn new(src: &'lx String) -> Self {
         Self {
             src,
             start: 0,

@@ -10,8 +10,9 @@ fn create_token(token_type: TokenType, literal: Option<LiteralValue>) -> Token {
 }
 
 fn parse_tokens(tokens: Vec<Token>) -> Vec<Stmt> {
-    let mut parser = Parser::new(tokens);
-    parser.parse()
+    let mut parser = Parser::new(&tokens);
+    parser.parse();
+    parser.statements
 }
 
 #[test]

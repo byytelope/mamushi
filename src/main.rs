@@ -11,20 +11,27 @@ fn main() {
 
     match args.len() {
         2.. => {
-            eprintln!("Usage: mash [path/to/script]?");
+            eprintln!("Usage: mamushi [path/to/script]?");
             exit(64);
         }
-        1 => run_file(
-            args.last()
-                .expect("Error while reading args...")
-                .to_string(),
-        ),
+        1 => {
+            if let Err(err) = run_file(
+                args.last()
+                    .expect("Error while reading args...")
+                    .to_string(),
+            ) {
+                eprintln!("Error while running file: {err}");
+                exit(1);
+            }
+        }
         0 => {
             let mut repl = Repl::new();
-            repl.run_repl();
+            if let Err(err) = repl.run_repl() {
+                eprintln!("REPL error: {err}");
+                exit(1);
+            };
+
             exit(0);
         }
     }
-
-    println!("{args:#?}");
 }

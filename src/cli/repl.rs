@@ -1,4 +1,6 @@
-use rustyline::DefaultEditor;
+use std::error::Error;
+
+use rustyline::{DefaultEditor, error::ReadlineError};
 
 use crate::frontend::{lexer::Lexer, parser::Parser};
 
@@ -15,9 +17,9 @@ impl Repl {
         }
     }
 
-    pub fn run_repl(&mut self) {
+    pub fn run_repl(&mut self) -> Result<(), Box<dyn Error>> {
         let mut buf = String::new();
-        let mut rl = DefaultEditor::new().unwrap();
+        let mut rl = DefaultEditor::new()?;
 
         loop {
             self.indented = self.indent_count > 0;
@@ -27,7 +29,7 @@ impl Repl {
 
             match readline {
                 Ok(line) => {
-                    rl.add_history_entry(&line).unwrap();
+                    let _ = rl.add_history_entry(&line);
 
                     if line.trim().is_empty() {
                         self.indent_count = self.indent_count.saturating_sub(1);
@@ -45,9 +47,12 @@ impl Repl {
                         self.indent_count = 0;
                     }
                 }
-                Err(err) => {
-                    eprintln!("{err:?}");
+                // Ctrl+C | Ctrl+D
+                Err(ReadlineError::Interrupted) | Err(ReadlineError::Eof) => {
                     break;
+                }
+                Err(err) => {
+                    return Err(Box::new(err));
                 }
             }
         }
@@ -61,10 +66,13 @@ impl Repl {
         println!("TOKENS -------------------------------");
         println!("{lex_tokens:#?}");
 
-        let mut parser = Parser::new(lex_tokens);
-        let stmts = parser.parse();
+        let mut parser = Parser::new(&lex_tokens);
+        parser.parse();
 
+        let stmts = parser.statements;
         println!("STATEMENTS -------------------------------");
         println!("{stmts:#?}");
+
+        Ok(())
     }
 }
